@@ -4443,8 +4443,6 @@ window.addEventListener('load', () => {
 setTimeout(() => {
     document.getElementById('loadingWarning').classList.remove('hidden');
 }, 10000);
-
-     initGame();
     </script>
 
 
@@ -8875,7 +8873,6 @@ document.getElementById('resetGameBtn').addEventListener('click', () => {
     }
     
     if (codeEntry.redeemed) {
-        console.log("Code already redeemed"); // Debug log
         showNotification('Code Already Used', 'This code has already been redeemed.', 'warning');
         return { success: false, message: 'Code already used' };
     }
@@ -8883,14 +8880,12 @@ document.getElementById('resetGameBtn').addEventListener('click', () => {
     try {
         // Process the reward
         if (codeEntry.reward === "cash") {
-            console.log("Processing cash reward"); // Debug log
             gameData.player.balance += codeEntry.value;
             updateBalanceDisplay();
             showNotification('Code Redeemed!', `You received $${codeEntry.value.toLocaleString()}!`, 'success');
             recordTransaction('code', `Code: ${codeEntry.code}`, codeEntry.value);
         } 
         else if (codeEntry.reward === "car") {
-            console.log("Processing car reward"); // Debug log
             const car = gameData.cars.find(c => c.carId === codeEntry.value);
             if (!car) {
                 console.error("Car not found for ID:", codeEntry.value); // Debug log
@@ -8918,8 +8913,6 @@ document.getElementById('resetGameBtn').addEventListener('click', () => {
         // Mark code as redeemed
         codeEntry.redeemed = true;
         saveGame();
-        
-        console.log("Code redeemed successfully"); // Debug log
         return { success: true, message: 'Code redeemed successfully' };
         
     } catch (error) {
