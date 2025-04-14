@@ -4171,6 +4171,11 @@ const changelogs = {
         name: 'Update 1 - Release Notes',
         timestamp: '2025-04-13T10:00:00Z',
         image: 'https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_13_0y5_Kleki.png?v=1744591151545',
+        news: [
+            'The site is now live! Invite friends and grind away. More news coming within the week.',
+            'We have moved to Render.com for hosting the site, I also added some code file formatting, if you have preformence issues, let us know.',
+            'Expect balance patches and hotfixes throughout the week.'
+        ],
         features: {
             'New Features': [
                 { title: 'Core Gameplay Loop', details: [
@@ -4206,7 +4211,6 @@ const changelogs = {
     }
 };
 
-
 function showChangelog(version) {
     const modal = document.getElementById('changelogModal');
     const body = document.getElementById('changelogBody');
@@ -4226,21 +4230,30 @@ function showChangelog(version) {
     });
 
     const data = changelogs[version];
-    let sections = '';
+    let newsSection = '';
 
+    if (data.news && data.news.length) {
+        newsSection = `<h3>News</h3><div class="feature-block"><ul class="sub-feature-list">`;
+        data.news.forEach(news => {
+            newsSection += `<li>${news}</li>`;
+        });
+        newsSection += `</ul></div>`;
+    }
+
+    let featureSections = '';
     for (const [section, items] of Object.entries(data.features)) {
-        sections += `<h3>${section}</h3><div class="feature-block">`;
+        featureSections += `<h3>${section}</h3><div class="feature-block">`;
         items.forEach(item => {
             if (typeof item === 'string') {
-                sections += `<div class="feature-title">${item}</div>`;
+                featureSections += `<div class="feature-title">${item}</div>`;
             } else {
-                sections += `<div class="feature-title">${item.title}</div>`;
+                featureSections += `<div class="feature-title">${item.title}</div>`;
                 if (item.details && item.details.length) {
-                    sections += `<ul class="sub-feature-list">${item.details.map(detail => `<li>${detail}</li>`).join('')}</ul>`;
+                    featureSections += `<ul class="sub-feature-list">${item.details.map(detail => `<li>${detail}</li>`).join('')}</ul>`;
                 }
             }
         });
-        sections += `</div>`;
+        featureSections += `</div>`;
     }
 
     const formattedDate = new Date(data.timestamp).toLocaleDateString(undefined, {
@@ -4252,8 +4265,9 @@ function showChangelog(version) {
     body.innerHTML = `
         <img src="${data.image}" alt="Changelog Header">
         <h2>${data.name}</h2>
-        <p style="color: var(--text-tertiary); font-size: 14px; margin-top: -10px;">${formattedDate}</p>
-        ${sections}
+        <p style="color: var(--text-primary); font-size: 14px; margin-top: -10px;">${formattedDate}</p>
+        ${newsSection}
+        ${featureSections}
     `;
 
     modal.classList.remove('hidden');
