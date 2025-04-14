@@ -4253,7 +4253,7 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 <script src="script.js"></script>
 <script>
 const currentChangelogVersion = 'ChangeLogsV1';
-let currentVersion = "1.0.5"; 
+let currentVersion = "1.0.6"; 
 
 const changelogs = {
     ChangeLogsV1: {
@@ -5385,9 +5385,90 @@ const gameData = {
   "tags": [],
   "description": "The first-gen NSX was Japan’s answer to Italian supercars — light, agile, and precision-built. With its mid-engine layout and everyday usability, it redefined what a supercar could be."
 },
-
+{
+  "carId": 33,
+  "brand": "Chevrolet",
+  "name": "1968 Corvette C3",
+  "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/corvetteoldred.jpg?v=1744646885867",
+  "stats": { "PWR": 72, "SPD": 78, "HDL": 70 },
+  "value": 28000,
+  "storage": 3,
+  "rarity": "rare",
+  "colors": [
+    {
+      "name": "Red",
+      "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/corvetteoldred.jpg?v=1744646885867",
+      "colorCode": "#9E0B0F"
+    },
+    {
+      "name": "Blue",
+      "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/corvetteoldblue.jpg?v=1744646957425",
+      "colorCode": "#002E5D"
+    },
+    {
+      "name": "Corvette Yellow",
+      "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/corvetteoldyellow.jpg?v=1744646962852",
+      "colorCode": "#FFC844"
+    }
   ],
-  
+  "tags": [],
+  "description": "The 1968 Corvette C3 debuted with dramatic 'Coke bottle' styling and a 327ci V8. As the first model of the third generation, it balanced American muscle with sports car agility, becoming an instant icon of the era."
+}
+  ],
+   packs: [
+                {
+                    packId: 1,
+                    name: "Starter Pack",
+                    image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
+                    contains: [5, 9, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 27, 28,30, 31],
+                    rarityTable: { common: 70, uncommon: 30, rare: 0, legendary: 0, mythic: 0 },
+                    cardsGiven: 3
+                },
+              {
+    "packId": 2,
+    "name": "Advanced Pack",
+    "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
+    "contains": [5, 7, 8, 9, 14, 15, 16, 17, 18, 19, 20, 22, 24, 25, 26, 27, 28, 30, 31, 32, 33],
+    "rarityTable": { "common": 60, "uncommon": 35, "rare": 5, "legendary": 0, "mythic": 0 },
+    "cardsGiven": 3
+},
+{
+    "packId": 3,
+    "name": "Performance Pack",
+    "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
+    "contains": [3, 5, 7, 8, 12, 19, 20, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+    "rarityTable": { "common": 40, "uncommon": 45, "rare": 12, "legendary": 3, "mythic": 0 },
+    "cardsGiven": 3
+},
+                {
+                    packId: 4,
+                    name: "Rare Pack",
+                    image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
+                    contains: [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 19, 20, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+                    rarityTable: { common: 20, uncommon: 40, rare: 15, legendary: 4, mythic: 1 },
+                    cardsGiven: 3
+                },
+                {
+                    packId: 5,
+                    name: "Premium Pack",
+                    image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
+                    contains: [1, 2, 3, 4, 6, 12, 16, 19, 20, 22, 24, 25, 27, 28, 29, 30, 31, 32, 33],
+                    rarityTable: { common: 0, uncommon: 40, rare: 40, legendary: 15, mythic: 5 },
+                    cardsGiven: 3
+                },
+              
+            ],
+            limitedShop: [
+        {
+            packId: 1000,
+            name: 'Limited Pack',
+            image: 'https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659',
+            contains: [13, 21, 23],
+            rarityTable: { common: 0, uncommon: 0, rare: 0, legendary: 0, mythic: 100 },
+            price: 250000,
+            cardsGiven: 1
+        },
+    ],
 stickers: [
   {
     stickerId: 1,
@@ -5602,60 +5683,6 @@ jobs: [
     activeJobs: [],
     activeRaces: [],
 
-            packs: [
-                {
-                    packId: 1,
-                    name: "Starter Pack",
-                    image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
-                    contains: [5, 9, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 27, 28,30, 31],
-                    rarityTable: { common: 70, uncommon: 30, rare: 0, legendary: 0, mythic: 0 },
-                    cardsGiven: 3
-                },
-              {
-    "packId": 2,
-    "name": "Advanced Pack",
-    "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
-    "contains": [5, 7, 8, 9, 14, 15, 16, 17, 18, 19, 20, 22, 24, 25, 26, 27, 28, 30, 31, 32],
-    "rarityTable": { "common": 60, "uncommon": 35, "rare": 5, "legendary": 0, "mythic": 0 },
-    "cardsGiven": 3
-},
-{
-    "packId": 3,
-    "name": "Performance Pack",
-    "image": "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
-    "contains": [3, 5, 7, 8, 12, 19, 20, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    "rarityTable": { "common": 40, "uncommon": 45, "rare": 12, "legendary": 3, "mythic": 0 },
-    "cardsGiven": 3
-},
-                {
-                    packId: 4,
-                    name: "Rare Pack",
-                    image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
-                    contains: [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 19, 20, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-                    rarityTable: { common: 20, uncommon: 40, rare: 15, legendary: 4, mythic: 1 },
-                    cardsGiven: 3
-                },
-                {
-                    packId: 5,
-                    name: "Premium Pack",
-                    image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
-                    contains: [1, 2, 3, 4, 6, 12, 16, 19, 20, 22, 24, 25, 27, 28, 29, 30, 31, 32],
-                    rarityTable: { common: 0, uncommon: 40, rare: 40, legendary: 15, mythic: 5 },
-                    cardsGiven: 3
-                },
-              
-            ],
-            limitedShop: [
-        {
-            packId: 1000,
-            name: 'Limited Pack',
-            image: 'https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659',
-            contains: [13, 21, 23],
-            rarityTable: { common: 0, uncommon: 0, rare: 0, legendary: 0, mythic: 100 },
-            price: 250000,
-            cardsGiven: 1
-        },
-    ],
                  codes: [
         { code: "KWPID1", reward: "cash", value: 100000, redeemed: false },
         { code: "SRTACR", reward: "car", value: 10, redeemed: false },
