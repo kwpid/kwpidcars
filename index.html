@@ -3327,6 +3327,56 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 .hidden {
     display: none;
 }
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    flex-direction: column;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-spinner {
+    border: 5px solid var(--bg-secondary);
+    border-top: 5px solid var(--primary);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: var(--text-primary);
+    margin: 5px 0;
+}
+
+.loading-warning {
+    color: var(--warning);
+    margin-bottom: 8px;
+}
+
+.loading-tip {
+    color: var(--text-tertiary);
+    font-size: 0.85em;
+    font-style: italic;
+    margin-top: 6px;
+}
+
+.hidden {
+    display: none;
+}
 
 /* Condition indicators */
 .condition-value.excellent { color: #4CAF50; }
@@ -4162,6 +4212,18 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
         <div class="changelog-body" id="changelogBody"></div>
     </div>
 </div>
+<div id="loadingScreen" class="loading-screen dark-mode">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <div id="loadingWarning" class="loading-warning hidden">
+            This doesn't normally take this long, if this keeps going, report it.
+        </div>
+        <div class="loading-text">Loading...</div>
+        <div id="loadingTip" class="loading-tip"></div>
+    </div>
+</div>
+
+
 <script src="script.js"></script>
 <script>
 const currentChangelogVersion = 'ChangeLogsV1';
@@ -4309,6 +4371,38 @@ window.addEventListener('load', () => {
     <div class="notifications" id="notifications"></div>
 
     <script>
+     const tips = [
+    "You can assign cars to jobs to earn passive money.",
+    "You can accept a race mission and play a mini-game — don't fail though!",
+    "Higher rarity cars often perform better in races and jobs.",
+    "Some jobs offer better pay but have stricter car requirements!",
+];
+
+function randomTip() {
+    const tipEl = document.getElementById('loadingTip');
+    const random = tips[Math.floor(Math.random() * tips.length)];
+    tipEl.textContent = random;
+}
+
+window.addEventListener('load', () => {
+    randomTip();
+
+    const seen = localStorage.getItem('changelogSeen');
+    if (seen !== currentChangelogVersion) {
+        showChangelog(currentChangelogVersion);
+    }
+
+    // Hide loading after a short delay to ensure smooth load
+    setTimeout(() => {
+        document.getElementById('loadingScreen').style.display = 'none';
+    }, 1500);
+});
+
+// Show warning if it takes unusually long (10s+)
+setTimeout(() => {
+    document.getElementById('loadingWarning').classList.remove('hidden');
+}, 10000);
+
      initGame();
     </script>
 </body>
