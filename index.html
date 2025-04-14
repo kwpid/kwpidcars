@@ -3387,7 +3387,22 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 .hidden {
     display: none;
 }
+.github-button {
+            background-color: var(--primary);
+            color: var(--text-primary);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            font-size: 14px;
+        }
 
+        .github-button:hover {
+            background-color: var(--primary-dark);
+            box-shadow: var(--card-shadow-hover);
+        }
 /* Condition indicators */
 .condition-value.excellent { color: #4CAF50; }
 .condition-value.good { color: #8BC34A; }
@@ -3649,6 +3664,9 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
         </label>
     </div>
 </div>
+<button class="github-button" onclick="window.location.href='https://github.com/kwpid/kwpidcars/issues'">
+    Report Bugs
+</button>
 
             </div>
         <!-- Data Settings -->
