@@ -4172,9 +4172,11 @@ const changelogs = {
         timestamp: '2025-04-13T10:00:00Z',
         image: 'https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_13_0y5_Kleki.png?v=1744591151545',
         news: [
-            'The site is now live! Invite friends and grind away. More news coming within the week.',
-            'We have moved to Render.com for hosting the site, I also added some code file formatting, if you have preformence issues, let us know.',
+            'Our car trading simulation is now officially live!',
+            'Added file optimization in the backend of the code, let us know if you have preformence issues.',
             'Expect balance patches and hotfixes throughout the week.'
+        ],
+        socials: [
         ],
         features: {
             'New Features': [
@@ -4230,8 +4232,8 @@ function showChangelog(version) {
     });
 
     const data = changelogs[version];
-    let newsSection = '';
 
+    let newsSection = '';
     if (data.news && data.news.length) {
         newsSection = `<h3>News</h3><div class="feature-block"><ul class="sub-feature-list">`;
         data.news.forEach(news => {
@@ -4256,6 +4258,20 @@ function showChangelog(version) {
         featureSections += `</div>`;
     }
 
+    let socialSection = '';
+if (data.socials && data.socials.length) {
+    socialSection = `<h3>Social Links</h3><div class="feature-block" style="display: flex; gap: 10px; align-items: center;">`;
+    data.socials.forEach(social => {
+        socialSection += `
+            <a href="${social.url}" target="_blank" style="display: inline-flex; align-items: center; text-decoration: none;">
+                <img src="${social.icon}" alt="${social.name}" style="width: 32px; height: 32px; filter: invert(1);">
+            </a>
+        `;
+    });
+    socialSection += `</div>`;
+}
+
+
     const formattedDate = new Date(data.timestamp).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'long',
@@ -4265,9 +4281,10 @@ function showChangelog(version) {
     body.innerHTML = `
         <img src="${data.image}" alt="Changelog Header">
         <h2>${data.name}</h2>
-        <p style="color: var(--text-primary); font-size: 14px; margin-top: -10px;">${formattedDate}</p>
+        <p style="color: var(--text-tertiary); font-size: 14px; margin-top: -10px;">${formattedDate}</p>
         ${newsSection}
         ${featureSections}
+        ${socialSection}
     `;
 
     modal.classList.remove('hidden');
