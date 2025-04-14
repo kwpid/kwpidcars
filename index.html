@@ -4372,6 +4372,19 @@ window.addEventListener('load', () => {
         showChangelog(currentChangelogVersion);
     }
 });
+let currentVersion = "1.0.2"; // Your current loaded version
+
+setInterval(() => {
+    fetch('/version.json')
+        .then(response => response.json())
+        .then(data => {
+            if (data.version !== currentVersion) {
+                alert("An update is available! Please refresh.");
+                // Or create a fancy pop-up.
+            }
+        })
+        .catch(err => console.error("Version check failed:", err));
+}, 10000); // checks every 60 seconds
 
 
   
