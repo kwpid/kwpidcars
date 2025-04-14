@@ -432,7 +432,7 @@ const gameData = {
         },
         
       ],
-      "tags": ["off-sale"],
+      "tags": [""],
       "description": "This limited-edition 1986 BMW M3 Evolution captures the raw essence of motorsport heritage. Only available for a short time, this variant combines legendary handling with enhanced exclusivity, making it a must-have for collectors and enthusiasts alike."
     },
     {
