@@ -3387,22 +3387,7 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 .hidden {
     display: none;
 }
-.github-button {
-            background-color: var(--primary);
-            color: var(--text-primary);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            font-size: 14px;
-        }
 
-        .github-button:hover {
-            background-color: var(--primary-dark);
-            box-shadow: var(--card-shadow-hover);
-        }
 /* Condition indicators */
 .condition-value.excellent { color: #4CAF50; }
 .condition-value.good { color: #8BC34A; }
@@ -3664,9 +3649,6 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
         </label>
     </div>
 </div>
-<button class="github-button" onclick="window.location.href='https://github.com/kwpid/kwpidcars/issues'">
-    Report Bugs
-</button>
 
             </div>
         <!-- Data Settings -->
@@ -4270,18 +4252,46 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 
 <script src="script.js"></script>
 <script>
-const currentChangelogVersion = 'ChangeLogsV1';
+const currentChangelogVersion = 'ChangeLogsV2';
 let currentVersion = "1.0.9"; 
 
 const changelogs = {
+  ChangeLogsV2: {
+        name: 'Update 1, Hotfixes 1',
+        timestamp: '2025-04-14T10:00:00Z',
+        image: 'https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_14_0ma_Kleki.png?v=1744651359485',
+        news: [
+            'First round of bug and hotfixes for Update!',
+            'Expect balance patches and hotfixes throughout the week.'
+        ],
+        socials: [
+        ],
+        features: {
+            'Fixes': [
+                { title: 'Pack Fixes', details: [
+                    'Fixed Premium Pack not show Common Rarity%',
+                    'Ensured Premium Pack has Common Cars'
+                ]},
+                { title: 'Add Bug Reports', details: [
+                    'Added a Button in Settings > Main > Scroll Down and Bug Reports',
+                    'Redirects to a GitHub Issue page, where players can submit bugs.'
+                ]},
+                { title: 'Fixed Race Values', details: [
+                    'Simply fixed some race values, to ensure balancing',
+                ]},
+                { title: 'Remove Debugging Logs', details: [
+                    'Removed debug logs for testing the site',
+                ]},
+            ],
+        }
+    },
     ChangeLogsV1: {
         name: 'Update 1 - Release Notes',
         timestamp: '2025-04-13T10:00:00Z',
         image: 'https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_13_0y5_Kleki.png?v=1744591151545',
         news: [
             'Our car card opening game is now officially live!',
-            'Expect balance patches and hotfixes throughout the week.',
-            'User code KWPID1 and SRTACR for free cars and cash.'
+            'Expect balance patches and hotfixes throughout the week.'
         ],
         socials: [
         ],
@@ -4317,7 +4327,7 @@ const changelogs = {
                 { title: 'Trading' }
             ]
         }
-    }
+    },
 };
 
 function showChangelog(version) {
@@ -5470,7 +5480,7 @@ const gameData = {
                     name: "Premium Pack",
                     image: "https://cdn.glitch.global/d90d2e0e-f080-4624-a28d-9238202ed552/2025_04_06_0m1_Kleki.png?v=1743959603659",
                     contains: [1, 2, 3, 4, 6, 12, 16, 19, 20, 22, 24, 25, 27, 28, 29, 30, 31, 32, 33],
-                    rarityTable: { common: 9, uncommon: 36, rare: 36, legendary: 14, mythic: 5 },
+                    rarityTable: { common: 0, uncommon: 40, rare: 40, legendary: 15, mythic: 5 },
                     cardsGiven: 3
                 },
               
@@ -5703,6 +5713,7 @@ jobs: [
                  codes: [
         { code: "KWPID1", reward: "cash", value: 100000, redeemed: false },
         { code: "SRTACR", reward: "car", value: 10, redeemed: false },
+                   { code: "BUGREPORTER1", reward: "cash", value: 100000, redeemed: false },
     ],
         };
 const packPricingConfig = {
