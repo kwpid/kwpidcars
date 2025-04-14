@@ -4253,7 +4253,7 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 <script src="script.js"></script>
 <script>
 const currentChangelogVersion = 'ChangeLogsV1';
-let currentVersion = "1.0.6"; 
+let currentVersion = "1.0.7"; 
 
 const changelogs = {
     ChangeLogsV1: {
@@ -8870,14 +8870,6 @@ document.getElementById('resetGameBtn').addEventListener('click', () => {
  function redeemCode(code) {
     const codeToCheck = code.toUpperCase().trim();
     console.log("Checking code:", codeToCheck); // Debug log
-    
-    // Debug: log all available codes
-    console.log("Available codes:", gameData.codes.map(c => ({
-        code: c.code, 
-        redeemed: c.redeemed,
-        reward: c.reward,
-        value: c.value
-    })));
     
     const codeEntry = gameData.codes.find(c => c.code === codeToCheck);
     
