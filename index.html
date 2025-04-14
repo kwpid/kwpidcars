@@ -4253,7 +4253,7 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 <script src="script.js"></script>
 <script>
 const currentChangelogVersion = 'ChangeLogsV1';
-let currentVersion = "1.0.7"; 
+let currentVersion = "1.0.8"; 
 
 const changelogs = {
     ChangeLogsV1: {
@@ -6366,29 +6366,11 @@ function renderMarketplace() {
         // Calculate dynamic price
         const displayPrice = calculateDynamicPackPrice(pack);
 
-        const rarityDisplay = Object.entries(pack.rarityTable)
-            .filter(([rarity, percent]) => percent > 0)
-            .map(([rarity, percent]) => `${capitalize(rarity)}: ${percent}%`)
-            .join(' | ');
 
         const packElement = document.createElement('div');
         packElement.className = 'card';
         packElement.innerHTML = `
-           <div class="pack-rarity-top" style="
-        font-size: 0.3rem;
-        text-align: center;
-        margin-bottom: 4px;
-        white-space: nowrap;
-        display: block;
-        width: fit-content;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-left: auto;
-        margin-right: auto;
-    ">
-        ${rarityDisplay}
-    </div>
+
 
             <img src="${pack.image}" alt="${pack.name}" class="card-image">
             <div class="card-content">
@@ -10339,7 +10321,188 @@ function checkBanStatus(userId) {
         return banInfo; // User is banned
     }
     return false; // User not banned
-}    // Initialize the game when DOM is loaded
+}  
+  
+  // Add these functions to handle data export/import
+function exportGameData() {
+    // Create a copy of game data without sensitive information
+    const exportData = {
+        player: {
+            ...gameData.player,
+            userId: undefined // Remove user ID from export
+        },
+        lastPlayTime: lastPlayTime,
+        activeJobs: gameData.activeJobs,
+        activeRaces: gameData.activeRaces,
+        carCooldowns: gameData.carCooldowns,
+        version: currentVersion,
+    };
+
+    // Encrypt the data with a simple XOR cipher (not strong security but obfuscates)
+    const encryptionKey = "kwpidCarsExport";
+    const jsonData = JSON.stringify(exportData);
+    let encryptedData = "";
+    
+    for (let i = 0; i < jsonData.length; i++) {
+        const keyChar = encryptionKey.charCodeAt(i % encryptionKey.length);
+        encryptedData += String.fromCharCode(jsonData.charCodeAt(i) ^ keyChar);
+    }
+
+    // Create download link
+    const blob = new Blob([encryptedData], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kwpidCarsSave_${new Date().toISOString().split('T')[0]}.kwp`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification("Export Successful", "Your game data has been exported", "success");
+}
+
+async function importGameData() {
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".kwp";
+    
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            const fileContent = await file.text();
+            const encryptionKey = "kwpidCarsExport";
+            let decryptedData = "";
+            
+            // Decrypt the data
+            for (let i = 0; i < fileContent.length; i++) {
+                const keyChar = encryptionKey.charCodeAt(i % encryptionKey.length);
+                decryptedData += String.fromCharCode(fileContent.charCodeAt(i) ^ keyChar);
+            }
+            
+            const importedData = JSON.parse(decryptedData);
+            
+            // Basic validation
+            if (!importedData.player || !importedData.player.inventory || !importedData.version) {
+                throw new Error("Invalid save file format");
+            }
+            
+            // Check if this is an older version
+            if (!importedData.version || importedData.version.split('.')[0] !== currentVersion.split('.')[0]) {
+    throw new Error(`This save file is from a different major version. Expected ${currentVersion}.`);
+}
+
+            
+            // Show confirmation with details
+            const confirm = await showConfirmation(
+                "Import Game Data",
+                `This will replace your current game with:
+                - ${importedData.player.inventory.length} cars
+                - $${importedData.player.balance.toLocaleString()} balance
+        
+                Are you sure you want to continue?`
+            );
+            
+            if (!confirm) return;
+            
+            // Merge imported data with current game
+            const currentUserId = gameData.player.userId;
+            
+            gameData.player = {
+                ...importedData.player,
+                userId: currentUserId // Preserve current user ID
+            };
+            
+            lastPlayTime = importedData.lastPlayTime || Date.now();
+            gameData.activeJobs = importedData.activeJobs || [];
+            gameData.activeRaces = importedData.activeRaces || [];
+            gameData.carCooldowns = importedData.carCooldowns || {};
+            
+            // Ensure all inventory items have required fields
+            gameData.player.inventory = gameData.player.inventory.map(item => ({
+                uniqueId: item.uniqueId || generateUniqueId(),
+                cardId: item.cardId,
+                obtainedAt: item.obtainedAt || new Date().toISOString(),
+                mileage: item.mileage || 0,
+                health: item.health || 100,
+                upgrades: item.upgrades || {},
+                customImage: item.customImage || null,
+                colorName: item.colorName || null,
+                colorCode: item.colorCode || null,
+                customName: item.customName || null,
+                valueBonus: item.valueBonus || 0,
+                rarityBonus: item.rarityBonus || null
+            }));
+            
+            // Save and refresh
+            saveGame();
+            renderInventory();
+            updateBalanceDisplay();
+            renderJobs();
+            updateStatsDisplay();
+            
+            showNotification("Import Successful", "Your game data has been imported", "success");
+            
+        } catch (error) {
+            console.error("Import failed:", error);
+            showNotification("Import Failed", "The save file is invalid or corrupted", "error");
+        }
+    };
+    
+    fileInput.click();
+}
+
+// Add these buttons to your settings panel (add to setupSettings function)
+function addImportExportButtons() {
+    const dataSettings = document.getElementById('settings-data');
+    if (!dataSettings) return;
+    
+    // Check if buttons already exist
+    if (document.getElementById('exportDataBtn')) return;
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'import-export-buttons';
+    buttonContainer.style.margin = '20px 0';
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '10px';
+    
+    const exportBtn = document.createElement('button');
+    exportBtn.id = 'exportDataBtn';
+    exportBtn.className = 'btn btn-primary';
+    exportBtn.innerHTML = '<span>💾</span> Export Game Data';
+    exportBtn.onclick = exportGameData;
+    
+    const importBtn = document.createElement('button');
+    importBtn.id = 'importDataBtn';
+    importBtn.className = 'btn btn-accent';
+    importBtn.innerHTML = '<span>📤</span> Import Game Data';
+    importBtn.onclick = importGameData;
+    
+    buttonContainer.appendChild(exportBtn);
+    buttonContainer.appendChild(importBtn);
+    
+    // Add some help text
+    const helpText = document.createElement('div');
+    helpText.className = 'hint';
+    helpText.style.marginTop = '5px';
+    helpText.textContent = 'Export saves your progress to a file. Import loads a previously exported save.';
+    
+    // Insert after the user ID display if it exists, otherwise at the end
+    const userIdDisplay = dataSettings.querySelector('.user-id-display');
+    if (userIdDisplay) {
+        dataSettings.insertBefore(buttonContainer, userIdDisplay.nextSibling);
+        dataSettings.insertBefore(helpText, buttonContainer.nextSibling);
+    } else {
+        dataSettings.appendChild(buttonContainer);
+        dataSettings.appendChild(helpText);
+    }
+}
+
+// Call this in your initGame function after setupSettings()
+addImportExportButtons();
+  // Initialize the game when DOM is loaded
         document.addEventListener('DOMContentLoaded', initGame);
 </script>
 </body>
