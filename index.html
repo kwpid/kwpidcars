@@ -10327,16 +10327,17 @@ function checkBanStatus(userId) {
 function exportGameData() {
     // Create a copy of game data without sensitive information
     const exportData = {
-        player: {
-            ...gameData.player,
-            userId: undefined // Remove user ID from export
-        },
-        lastPlayTime: lastPlayTime,
-        activeJobs: gameData.activeJobs,
-        activeRaces: gameData.activeRaces,
-        carCooldowns: gameData.carCooldowns,
-        version: currentVersion,
-    };
+    player: {
+        ...gameData.player,
+        userId: undefined // Remove user ID from export
+    },
+    lastPlayTime: lastPlayTime,
+    activeJobs: gameData.activeJobs,
+    activeRaces: gameData.activeRaces,
+    carCooldowns: gameData.carCooldowns,
+    codes: gameData.codes, // <-- Add this line!
+    version: currentVersion,
+};
 
     // Encrypt the data with a simple XOR cipher (not strong security but obfuscates)
     const encryptionKey = "kwpidCarsExport";
@@ -10418,6 +10419,7 @@ async function importGameData() {
             lastPlayTime = importedData.lastPlayTime || Date.now();
             gameData.activeJobs = importedData.activeJobs || [];
             gameData.activeRaces = importedData.activeRaces || [];
+            gameData.codes = importedData.codes || [];
             gameData.carCooldowns = importedData.carCooldowns || {};
             
             // Ensure all inventory items have required fields
