@@ -4232,6 +4232,22 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
         <div id="loadingTip" class="loading-tip"></div>
     </div>
 </div>
+<div id="updateNotice" style="
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ff4747;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  font-family: sans-serif;
+  z-index: 9999;
+">
+  New Update Available — Please Refresh!
+</div>
 
 
 <script src="script.js"></script>
@@ -4374,17 +4390,20 @@ window.addEventListener('load', () => {
     }
 });
 
-setInterval(() => {
+function checkForUpdate() {
     fetch('/version.json')
         .then(response => response.json())
         .then(data => {
             if (data.version !== currentVersion) {
-                alert("An update is available! Please refresh.");
-                // Or create a fancy pop-up.
+                document.getElementById('updateNotice').style.display = 'block';
             }
         })
         .catch(err => console.error("Version check failed:", err));
-}, 10000); // checks every 60 seconds
+}
+
+// check every 60 seconds
+setInterval(checkForUpdate, 10000);
+
 
 
   
