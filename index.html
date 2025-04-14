@@ -8869,12 +8869,10 @@ document.getElementById('resetGameBtn').addEventListener('click', () => {
 }
  function redeemCode(code) {
     const codeToCheck = code.toUpperCase().trim();
-    console.log("Checking code:", codeToCheck); // Debug log
     
     const codeEntry = gameData.codes.find(c => c.code === codeToCheck);
     
     if (!codeEntry) {
-        console.log("Code not found in database"); // Debug log
         showNotification('Invalid Code', 'The code you entered is invalid. Please check and try again.', 'error');
         return { success: false, message: 'Invalid code' };
     }
