@@ -4555,6 +4555,9 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
     padding: 20px;
     color: var(--text-secondary);
 }
+      button[data-tab="leaderboards"] {
+  display: none;
+}
 /* Condition indicators */
 .condition-value.excellent { color: #4CAF50; }
 .condition-value.good { color: #8BC34A; }
@@ -10345,8 +10348,7 @@ document.querySelectorAll('.leaderboard-tab').forEach(tab => {
         // Show selected subtab
         document.getElementById(`leaderboard-${subtabId}`).classList.add('active');
         
-        // Load data for this leaderboard if not already loaded
-        loadLeaderboardData(subtabId);
+
     });
 });
 document.addEventListener('DOMContentLoaded', () => {
