@@ -17,7 +17,8 @@ import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.0/firebase
 import { getDatabase, ref, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-
+let isCloudDataLoaded = false;
+let isAuthStateInitialized = false;
   
 const firebaseConfig = {
   apiKey: "AIzaSyCfkWQY0hQhDU2eWhVPsZxlF95TQf9HOXg",
@@ -83,6 +84,10 @@ function loadFromCloudSave(cloudData) {
     if (!gameData.player.userId) {
       gameData.player.userId = auth.currentUser?.uid || generateUserId();
     }
+    if (cloudData.player?.username) {
+  document.getElementById("userName").textContent = cloudData.player.username;
+}
+
 
     gameData.player.inventory = (cloudData.player?.inventory || []).map(item => ({
       uniqueId: item.uniqueId || generateUniqueId(),
@@ -100,11 +105,20 @@ function loadFromCloudSave(cloudData) {
       tags: item.tags || []
     }));
 
-    gameData.activeJobs = (cloudData.activeJobs || []).map(job => ({
-      ...job,
-      timerInterval: null,
-      completionTimeout: null
-    }));
+     gameData.activeJobs = (cloudData.activeJobs || []).map(job => {
+      const restoredJob = {
+        ...job,
+        timerInterval: null,  // We'll recreate these
+        completionTimeout: null
+      };
+
+      // If job was in progress, restart its timer
+      if (job.assignedCar && !job.completed) {
+        startJobTimer(restoredJob);
+      }
+      
+      return restoredJob;
+    });
 
     gameData.activeRaces = cloudData.activeRaces || [];
     gameData.carCooldowns = cloudData.carCooldowns || {};
@@ -124,7 +138,7 @@ function clearLocalData() {
   localStorage.clear();
 }
 
-auth.onAuthStateChanged((user) => {
+auth.onAuthStateChanged(async (user) => {
   const signInBtn = document.getElementById("signInBtn");
   const signOutBtn = document.getElementById("signOutBtn");
   const userInfo = document.getElementById("userInfo");
@@ -132,84 +146,140 @@ auth.onAuthStateChanged((user) => {
   const userPfp = document.getElementById("userPfp");
   const signedOutNotice = document.getElementById("signedOutNotice");
 
-  if (user) {
-    console.log("🔁 Logged in as:", user.displayName);
+  // Show loading state
+  document.body.classList.add('loading-auth');
 
-    signInBtn.style.display = "none";
-    signOutBtn.style.display = "inline-block";
-    userInfo.style.display = "flex";
-    userName.textContent = user.displayName || "Unnamed User";
-    userPfp.src = user.photoURL || "";
+  try {
+    if (user) {
+      console.log("🔁 Logged in as:", user.displayName);
 
-    if (!gameData.player) gameData.player = {};
-    gameData.player.firebaseUID = user.uid;
+      signInBtn.style.display = "none";
+      signOutBtn.style.display = "inline-block";
+      userInfo.style.display = "flex";
+      userName.textContent = user.displayName || "Unnamed User";
+      userPfp.src = user.photoURL || "";
 
-    setupRealtimeListener(user.uid);
-    window.firebaseUserId = user.uid;
+      if (!gameData.player) gameData.player = {};
+      gameData.player.firebaseUID = user.uid;
 
-    const userIdDisplay = document.getElementById('userIdDisplay');
-    if (userIdDisplay) {
-      userIdDisplay.textContent = `User ID: ${user.uid}`;
-    }
+      setupRealtimeListener(user.uid);
+      window.firebaseUserId = user.uid;
 
-    loadUserData(user.uid)
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          const cloudData = snapshot.val();
-          console.log("📥 Loaded cloud save");
-          const ok = loadFromCloudSave(cloudData);
-          initGame(ok);
-        } else {
-          console.log("🆕 No cloud save found. Starting fresh.");
+      const userIdDisplay = document.getElementById('userIdDisplay');
+      if (userIdDisplay) {
+        userIdDisplay.textContent = `User ID: ${user.uid}`;
+      }
+
+      // Load cloud data and wait for completion
+      await loadUserData(user.uid)
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            const cloudData = snapshot.val();
+            console.log("📥 Loaded cloud save");
+            const ok = loadFromCloudSave(cloudData);
+            isCloudDataLoaded = true;
+            initGame(ok);
+          } else {
+            console.log("🆕 No cloud save found. Starting fresh.");
+            isCloudDataLoaded = true;
+            initGame(false);
+          }
+        })
+        .catch((err) => {
+          console.error("💥 Failed to load user data", err);
+          isCloudDataLoaded = true;
           initGame(false);
-        }
-      })
-      .catch((err) => {
-        console.error("💥 Failed to load user data", err);
-        initGame(false);
-      });
+        });
 
-    if (signedOutNotice) signedOutNotice.style.display = "none";
+      if (signedOutNotice) signedOutNotice.style.display = "none";
 
-  } else {
-    console.log("🙅 Not signed in.");
-
-    signInBtn.style.display = "inline-block";
-    signOutBtn.style.display = "none";
-    userInfo.style.display = "none";
-
-    if (signedOutNotice) signedOutNotice.style.display = "block";
-
-    // 🔥 KEY FIX:
-    if (!gameData.player || !gameData.player.userId) {
-      initGame(false);  // Only start a new guest profile if nothing exists.
     } else {
-      console.log("💾 Preserving existing local data for guest session.");
-      initGame(true);  // Run init but don't overwrite player data.
+      console.log("🙅 Not signed in.");
+
+      signInBtn.style.display = "inline-block";
+      signOutBtn.style.display = "none";
+      userInfo.style.display = "none";
+
+      if (signedOutNotice) signedOutNotice.style.display = "block";
+
+      // Handle guest session
+      if (!gameData.player || !gameData.player.userId) {
+        isCloudDataLoaded = true;
+        initGame(false);
+      } else {
+        console.log("💾 Preserving existing local data for guest session.");
+        isCloudDataLoaded = true;
+        initGame(true);
+      }
     }
+  } finally {
+    // Remove loading state
+    document.body.classList.remove('loading-auth');
+    isAuthStateInitialized = true;
   }
 });
 
 
 
+
 document.getElementById("signOutBtn").onclick = async () => {
-  if (auth.currentUser) {
-    await saveToCloud(); // Wait for cloud save before signOut
+  try {
+    document.body.classList.add('loading-auth');
+    
+    if (auth.currentUser) {
+      await saveToCloud();
+    }
+    await signOut(auth);
+    console.log("👋 Signed out");
+    
+    // Wait for auth state to update
+    await new Promise((resolve) => {
+      const checkSignedOut = () => {
+        if (!auth.currentUser && isAuthStateInitialized) {
+          resolve();
+        } else {
+          setTimeout(checkSignedOut, 100);
+        }
+      };
+      checkSignedOut();
+    });
+    
+    // Now refresh the page
+    location.reload();
+  } finally {
+    document.body.classList.remove('loading-auth');
   }
-  await signOut(auth);
-  console.log("👋 Signed out");
-  location.reload();
 };
 
 
-document.getElementById("signInBtn").onclick = () => {
-  signInWithPopup(auth, provider).then((result) => {
+document.getElementById("signInBtn").onclick = async () => {
+  try {
+    // Show loading state
+    document.body.classList.add('loading-auth');
+    
+    const result = await signInWithPopup(auth, provider);
     const user = result.user;
     console.log("🔑 Signed in as:", user.displayName);
-
-  }).catch((error) => {
+    
+    // Wait for cloud data to load
+    await new Promise((resolve) => {
+      const checkLoaded = () => {
+        if (isCloudDataLoaded && isAuthStateInitialized) {
+          resolve();
+        } else {
+          setTimeout(checkLoaded, 100);
+        }
+      };
+      checkLoaded();
+    });
+    
+    // Now refresh the page
+    location.reload();
+  } catch (error) {
     console.error("❌ Sign-in failed:", error);
-  });
+  } finally {
+    document.body.classList.remove('loading-auth');
+  }
 };
 function signUpWithEmail(email, password) {
   return createUserWithEmailAndPassword(auth, email, password)
@@ -295,6 +365,7 @@ window.loadFromCloudSave = loadFromCloudSave;
     <title>KwpidCars - Car Card Game</title>
     <style>
      
+
 
         .dark-mode {
             --primary: #8ab4f8;
@@ -4020,81 +4091,285 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
   scrollbar-width: thin;
 }
 
- #authContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
+/* Updated User Section in Settings */
+#settings-user {
     padding: 20px;
-    background: #1e1e1e;
-    border-radius: 8px;
-    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#authContainer {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border);
+    text-align: center;
 }
 
 #userInfo {
-    display: none;
+    display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+#userPfp {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+#userName {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-id-display {
+    background: var(--bg-tertiary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    display: inline-block;
+}
+
+/* Updated Username Change Button */
+#changeUsernameBtn {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 8px;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
 }
 
-#userPfp {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #4caf50;
-}
-
-#userName {
-    font-weight: bold;
-    color: #ddd;
-}
-
-#userIdDisplay {
-    margin: 0;
-    font-size: 0.75em;
-    color: #777;
-    font-family: monospace;
-}
-
-.authBtn {
-    width: 220px;
-    justify-content: center;
-    background-color: #4285F4;
+#changeUsernameBtn:hover {
+    background: var(--primary);
     color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 14px;
-    cursor: pointer;
-    font-size: 14px;
+    transform: translateY(-2px);
+}
+
+#changeUsernameBtn::before {
+    content: "✏️";
+}
+
+/* Auth Buttons */
+.authBtn {
+    width: 100%;
+    max-width: 280px;
+    margin: 8px auto;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    justify-content: center;
+    gap: 10px;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
 }
 
-.authBtn:hover {
-    background-color: #3367D6;
-    transform: translateY(-1px);
+.authBtn.google {
+    background: #4285F4;
+    color: white;
 }
 
-.authBtn.google::before {
-    content: '';
-    width: 18px;
-    height: 18px;
-    background: url('https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg') no-repeat center;
-    background-size: contain;
-    display: inline-block;
+.authBtn.google:hover {
+    background: #3367D6;
+    transform: translateY(-2px);
 }
 
 .authBtn.signout {
-    background-color: #e53935;
+    background: var(--error);
+    color: white;
 }
 
 .authBtn.signout:hover {
-    background-color: #c62828;
-    transform: translateY(-1px);
+    background: var(--error-hover);
+    transform: translateY(-2px);
+}
+
+/* Username Popup Styling */
+#usernamePopup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-primary);
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow-hover);
+    z-index: 1001;
+    width: 90%;
+    max-width: 400px;
+    border: 1px solid var(--border);
+    animation: fadeIn 0.3s ease;
+}
+
+#usernamePopup label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+#newUsername {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 16px;
+    margin-bottom: 16px;
+    transition: var(--transition);
+}
+
+#newUsername:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+#usernamePopup button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+}
+
+#saveUsernameBtn {
+    background: var(--success);
+    color: white;
+    margin-right: 8px;
+}
+
+#saveUsernameBtn:hover {
+    background: var(--purchase-dark);
+    transform: translateY(-2px);
+}
+
+#cancelUsernameBtn {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+#cancelUsernameBtn:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+    #authContainer {
+        padding: 16px;
+    }
+    
+    #userPfp {
+        width: 64px;
+        height: 64px;
+    }
+    
+    #userName {
+        font-size: 16px;
+    }
+    
+    .authBtn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
+
+/* Loading state for username change */
+.loading-auth {
+  cursor: wait;
+}
+
+.loading-auth * {
+  pointer-events: none;
+}
+
+.username-saving {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.username-saving::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Error/Success Messages */
+.username-message {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    display: none;
+}
+
+.username-message.success {
+    background: var(--success-light);
+    color: var(--success);
+    display: block;
+}
+
+.username-message.error {
+    background: var(--error-light);
+    color: var(--error);
+    display: block;
+}
+
+/* Google Icon Styling */
+.google-icon {
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 2px;
+    padding: 2px;
 }
 .github-button {
     background-color: #24292e;
@@ -4114,6 +4389,172 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
     background-color: #1b1f23;
     border-color: #0f1113;
   }
+      
+      /* Leaderboard Styles */
+.leaderboard-tabs-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.leaderboard-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.leaderboard-tab {
+    padding: 10px 16px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    font-weight: 500;
+    transition: var(--transition);
+    color: var(--text-secondary);
+    position: relative;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.leaderboard-tab:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.leaderboard-tab.active {
+    color: var(--primary);
+}
+
+.leaderboard-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--primary);
+}
+
+.leaderboard-subcontent {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.leaderboard-subtab {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.leaderboard-subtab.active {
+    display: block;
+}
+
+.leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    box-shadow: var(--card-shadow);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.leaderboard-table th, 
+.leaderboard-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.leaderboard-table th {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 12px;
+}
+
+.leaderboard-table tr:nth-child(even) {
+    background-color: var(--bg-primary);
+}
+
+.leaderboard-table tr:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.leaderboard-table .rank-cell {
+    font-weight: 600;
+    width: 50px;
+    text-align: center;
+}
+
+.leaderboard-table .player-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.leaderboard-table .player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Highlight current user row */
+.leaderboard-table .current-user {
+    background-color: var(--primary-light);
+    border-left: 3px solid var(--primary);
+}
+
+/* Rank badges */
+.rank-1 {
+    color: gold;
+    font-weight: bold;
+}
+
+.rank-2 {
+    color: silver;
+    font-weight: bold;
+}
+
+.rank-3 {
+    color: #cd7f32; /* bronze */
+    font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .leaderboard-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .leaderboard-tab {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.leaderboard-loading {
+    animation: pulse 1.5s infinite;
+    text-align: center;
+    padding: 20px;
+    color: var(--text-secondary);
+}
 /* Condition indicators */
 .condition-value.excellent { color: #4CAF50; }
 .condition-value.good { color: #8BC34A; }
@@ -4157,7 +4598,9 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
     <button class="tab" data-tab="marketplace">Marketplace</button>
     <button class="tab" data-tab="missions">Income</button>
     <button class="tab" data-tab="index">Index</button>
+    <button class="tab" data-tab="leaderboards">Leaderboards</button>
     <button class="tab" data-tab="settings">Settings</button>
+    
 </div>
 <div id="inventory" class="tab-content active">
     <h2>Your Collection</h2>
@@ -4210,6 +4653,151 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
     </div>
 </div>
 
+      
+      <div id="leaderboards" class="tab-content">
+    <h2>Leaderboards</h2>
+    
+    <!-- Leaderboard Tabs -->
+    <div class="leaderboard-tabs-wrapper">
+        <div class="leaderboard-tabs">
+            <button class="leaderboard-tab active" data-subtab="total-cars">Total Cars</button>
+            <button class="leaderboard-tab" data-subtab="inventory-value">Inventory Value</button>
+            <button class="leaderboard-tab" data-subtab="play-time">Play Time</button>
+            <button class="leaderboard-tab" data-subtab="miles-driven">Miles Driven</button>
+            <button class="leaderboard-tab" data-subtab="job-earnings">Job Earnings</button>
+            <button class="leaderboard-tab" data-subtab="race-earnings">Race Earnings</button>
+        </div>
+    </div>
+    
+    <!-- Leaderboard Content -->
+    <div class="leaderboard-subcontent">
+        <!-- Total Cars Leaderboard -->
+        <div id="leaderboard-total-cars" class="leaderboard-subtab active">
+            <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Total Cars</th>
+                        </tr>
+                    </thead>
+                    <tbody id="totalCarsLeaderboard">
+                        <!-- Data will be populated here -->
+                        <tr class="empty-message">
+                            <td colspan="4">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Inventory Value Leaderboard -->
+        <div id="leaderboard-inventory-value" class="leaderboard-subtab">
+            <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Total Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryValueLeaderboard">
+                        <!-- Data will be populated here -->
+                        <tr class="empty-message">
+                            <td colspan="4">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Play Time Leaderboard -->
+        <div id="leaderboard-play-time" class="leaderboard-subtab">
+            <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Play Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playTimeLeaderboard">
+                        <!-- Data will be populated here -->
+                        <tr class="empty-message">
+                            <td colspan="4">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Miles Driven Leaderboard -->
+        <div id="leaderboard-miles-driven" class="leaderboard-subtab">
+            <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Total Miles</th>
+                        </tr>
+                    </thead>
+                    <tbody id="milesDrivenLeaderboard">
+                        <!-- Data will be populated here -->
+                        <tr class="empty-message">
+                            <td colspan="4">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Job Earnings Leaderboard -->
+        <div id="leaderboard-job-earnings" class="leaderboard-subtab">
+            <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Total Earnings</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobEarningsLeaderboard">
+                        <!-- Data will be populated here -->
+                        <tr class="empty-message">
+                            <td colspan="4">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Race Earnings Leaderboard -->
+        <div id="leaderboard-race-earnings" class="leaderboard-subtab">
+            <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Total Earnings</th>
+                        </tr>
+                    </thead>
+                    <tbody id="raceEarningsLeaderboard">
+                        <!-- Data will be populated here -->
+                        <tr class="empty-message">
+                            <td colspan="4">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
         <div id="index" class="tab-content">
             <h2>Car Index</h2>
@@ -4253,7 +4841,7 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
       <img id="userPfp" src="" alt="Profile Picture">
       <div>
         <span id="userName"></span>
-        
+        <button id="changeUsernameBtn">Change Username</button>
       </div>
       <div id="userIdDisplay" class="user-id-display" style="
         color: #888888;
@@ -5015,6 +5603,12 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
         <div id="loadingTip" class="loading-tip"></div>
     </div>
 </div>
+  <div id="usernamePopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#222; padding:20px; border-radius:10px; z-index:999; color:white;">
+  <label for="newUsername">Enter new username:</label><br>
+  <input type="text" id="newUsername" maxlength="20" placeholder="1-20 letters only" style="margin-top:10px; padding:5px;"><br>
+  <button id="saveUsernameBtn" style="margin-top:10px;">Save</button>
+  <button id="cancelUsernameBtn" style="margin-top:10px;">Cancel</button>
+</div>
 <div id="updateNotice" style="
   display: none;
   position: fixed;
@@ -5041,7 +5635,7 @@ body.banned *:not(.ban-overlay):not(.ban-overlay *) {
 <script src="script.js"></script>
 <script>
 const currentChangelogVersion = 'ChangeLogsV3';
-let currentVersion = "2.0.0"; 
+let currentVersion = "2.0.1"; 
   
   
 
@@ -7612,7 +8206,78 @@ function loadGame() {
 }
 
 
+document.getElementById("changeUsernameBtn").addEventListener("click", () => {
+  document.getElementById("usernamePopup").style.display = "block";
+  document.getElementById("newUsername").value = gameData.player?.username || "";
+});
 
+document.getElementById("cancelUsernameBtn").addEventListener("click", () => {
+  document.getElementById("usernamePopup").style.display = "none";
+});
+
+document.getElementById("saveUsernameBtn").addEventListener("click", async () => {
+  const input = document.getElementById("newUsername").value.trim();
+
+  if (!/^[a-zA-Z]{1,20}$/.test(input)) {
+    showNotification(
+      "Invalid Username", 
+      "Username must be 1-20 English letters only.",
+      'error',
+      3
+    );
+    return;
+  }
+
+  gameData.player.username = input;
+
+  const user = firebaseAuth.currentUser;
+  if (user) {
+    try {
+      // Show loading state
+      const saveBtn = document.getElementById("saveUsernameBtn");
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="username-saving"></span> Saving...';
+      
+      await firebaseSaveUserData(user.uid, gameData);
+      
+      // Update UI
+      document.getElementById("userName").textContent = input;
+      showNotification(
+        "Username Updated", 
+        "Your username was successfully changed!",
+        'success',
+        3
+      );
+      
+    } catch (err) {
+      console.error("Failed to save username:", err);
+      showNotification(
+        "Save Failed", 
+        "Failed to save username. Please try again.",
+        'error',
+        5
+      );
+    } finally {
+      // Reset button state
+      const saveBtn = document.getElementById("saveUsernameBtn");
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save';
+    }
+  }
+
+  document.getElementById("usernamePopup").style.display = "none";
+});
+
+// Helper function to show loading state on button
+function setButtonLoading(button, isLoading) {
+  if (isLoading) {
+    button.disabled = true;
+    button.innerHTML = '<span class="username-saving"></span> Saving...';
+  } else {
+    button.disabled = false;
+    button.textContent = 'Save';
+  }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -8673,15 +9338,22 @@ function renderJobs() {
 }
 
 function renderJobSystemUI() {
-    const jobsHeader = document.createElement('div');
-    jobsHeader.className = 'jobs-header';
-    jobsHeader.innerHTML = `
-        <div id="jobsCounter" class="jobs-counter">
-            Jobs: ${gameData.activeJobs.length}/${gameData.maxActiveJobs}
-        </div>
-    `;
-    const jobsContainer = document.getElementById('jobsContainer');
-    jobsContainer.parentNode.insertBefore(jobsHeader, jobsContainer);
+    let jobsHeader = document.querySelector('.jobs-header');
+    
+    if (!jobsHeader) {
+        jobsHeader = document.createElement('div');
+        jobsHeader.className = 'jobs-header';
+        jobsHeader.innerHTML = `
+            <div id="jobsCounter" class="jobs-counter">
+                Jobs: ${gameData.activeJobs.length}/${gameData.maxActiveJobs}
+            </div>
+        `;
+        const jobsContainer = document.getElementById('jobsContainer');
+        jobsContainer.parentNode.insertBefore(jobsHeader, jobsContainer);
+    } else {
+        // Just update the counter if header already exists
+        updateJobsCounter();
+    }
 }
 
 function renderRaceUI() {
@@ -9651,6 +10323,40 @@ if (limitedShopGrid) {
         }
     });
 }
+  
+document.querySelectorAll('.leaderboard-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        // Get the subtab to show from data attribute
+        const subtabId = tab.getAttribute('data-subtab');
+        
+        // Hide all leaderboard subtabs
+        document.querySelectorAll('.leaderboard-subtab').forEach(subtab => {
+            subtab.classList.remove('active');
+        });
+        
+        // Deactivate all tabs
+        document.querySelectorAll('.leaderboard-tab').forEach(t => {
+            t.classList.remove('active');
+        });
+        
+        // Activate clicked tab
+        tab.classList.add('active');
+        
+        // Show selected subtab
+        document.getElementById(`leaderboard-${subtabId}`).classList.add('active');
+        
+        // Load data for this leaderboard if not already loaded
+        loadLeaderboardData(subtabId);
+    });
+});
+document.addEventListener('DOMContentLoaded', () => {
+    // Activate the first tab by default
+    const firstTab = document.querySelector('.leaderboard-tab.active');
+    if (firstTab) {
+        const firstSubtabId = firstTab.getAttribute('data-subtab');
+        loadLeaderboardData(firstSubtabId);
+    }
+});
 document.querySelector('.dropup-toggle').addEventListener('click', function() {
     const content = this.nextElementSibling;
     content.style.display = content.style.display === 'block' ? 'none' : 'block';
@@ -10761,17 +11467,24 @@ function startRaceMinigame(carId, raceId) {
     };
     const cooldownTime = rarityCooldowns[carData.rarity.toLowerCase()] || 10 * 60 * 1000;
     gameData.carCooldowns[carId] = Date.now() + cooldownTime;
+    
     const playerOVR = calculateOVR(carData.stats, playerCar.upgrades);
     const opponentOVR = calculateOVR(race.carStats, {});
     const statAdvantage = playerOVR - opponentOVR;
-    const difficultyModifier = Math.max(0.7, Math.min(1.3, 1 - (statAdvantage / 200)));
+    
+    // REVERSED DIFFICULTY LOGIC - higher advantage = easier game
+    const difficultyModifier = Math.max(0.7, Math.min(1.3, 1 + (statAdvantage / 200)));
+    
     const predefinedRaceTime = (race.time || 30) * 1000; 
-    const baseDuration = Math.max(40000, Math.min(80000, 60000 + (statAdvantage * 200)));
+    const baseDuration = Math.max(40000, Math.min(80000, 60000 - (statAdvantage * 200))); // Higher advantage = shorter duration
     const duration = Math.min(baseDuration, predefinedRaceTime);
+    
+    // Higher advantage = smaller penalty
     const maxRewardPenalty = 2000;
-    const rewardPenalty = Math.min(maxRewardPenalty, Math.floor((duration - 40000) / 10));
-    const adjustedReward = Math.max(race.reward - rewardPenalty, race.reward * 0.5); // Never less than half
+    const rewardPenalty = Math.min(maxRewardPenalty, Math.floor((80000 - duration) / 20));
+    const adjustedReward = Math.max(race.reward - rewardPenalty, race.reward * 0.5);
     race.adjustedReward = adjustedReward;
+    
     const minigameModal = document.createElement('div');
     minigameModal.className = 'modal';
     minigameModal.style.display = 'flex';
@@ -10780,8 +11493,9 @@ function startRaceMinigame(carId, raceId) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     if (isMobile) {
+        // Higher advantage = lower score needed
+        const goal = Math.max(10, Math.min(20, 15 - Math.floor(statAdvantage / 10)));
         let score = 0;
-        const goal = Math.max(14, Math.min(20, 15 + Math.floor(statAdvantage / 10)));
         let startTime = Date.now();
         let activeDot = null;
         let dotTimeout = null;
@@ -10828,7 +11542,8 @@ function startRaceMinigame(carId, raceId) {
             
             const containerWidth = dotContainer.clientWidth;
             const containerHeight = dotContainer.clientHeight;
-            const dotSize = 30 + Math.floor((1.3 - difficultyModifier) * 30); 
+            // Higher advantage = larger dots (easier to hit)
+            const dotSize = 30 + Math.floor((difficultyModifier - 1) * 30); 
             
             const maxX = containerWidth - dotSize;
             const maxY = containerHeight - dotSize;
@@ -10856,19 +11571,21 @@ function startRaceMinigame(carId, raceId) {
                 if (score >= goal) {
                     endMinigame(true);
                 } else {
-                    setTimeout(createDot, 800 - (difficultyModifier * 500));
+                    // Higher advantage = longer time between dots
+                    setTimeout(createDot, 800 - ((1.3 - difficultyModifier) * 500));
                 }
             });
             
             dotContainer.appendChild(dot);
             activeDot = dot;
+            // Higher advantage = dots stay visible longer
             dotTimeout = setTimeout(() => {
                 if (activeDot === dot && isGameActive) {
                     dotContainer.removeChild(dot);
                     activeDot = null;
                     createDot();
                 }
-            }, 1500 * difficultyModifier);
+            }, 1500 * (2 - difficultyModifier)); // Reversed multiplier
         }
 
         function updateProgress() {
@@ -10898,8 +11615,9 @@ function startRaceMinigame(carId, raceId) {
         const timer = setInterval(updateProgress, 100);
         
     } else {
+        // Higher advantage = lower score needed
+        const goal = Math.max(8, Math.min(15, 12 - Math.floor(statAdvantage / 10)));
         let score = 0;
-        const goal = Math.max(10, Math.min(20, 15 + Math.floor(statAdvantage / 10)));
         const keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         let targetKey = '';
         let startTime = Date.now();
@@ -10911,8 +11629,9 @@ function startRaceMinigame(carId, raceId) {
 
         const maxCooldown = 4000; 
         const minCooldown = 1000; 
+        // Higher advantage = shorter cooldown between keys
         const cooldownTime = Math.max(minCooldown, Math.min(maxCooldown, 
-            minCooldown + ((1 - difficultyModifier) * 3000)));
+            minCooldown + ((2 - difficultyModifier) * 3000)));
 
         minigameModal.innerHTML = `
             <div class="modal-content">
@@ -10945,7 +11664,8 @@ function startRaceMinigame(carId, raceId) {
         const cooldownMessageEl = minigameModal.querySelector('#cooldown-message');
 
         function getRandomKey() {
-            const keyCount = Math.min(26, 10 + Math.floor((1.3 - difficultyModifier) * 16));
+            // Higher advantage = smaller key pool (easier to remember)
+            const keyCount = Math.min(26, 10 + Math.floor((2 - difficultyModifier) * 16));
             return keys[Math.floor(Math.random() * keyCount)];
         }
 
@@ -10959,11 +11679,12 @@ function startRaceMinigame(carId, raceId) {
             cooldownMessageEl.style.display = 'none';
             
             if (keyTimeout) clearTimeout(keyTimeout);
+            // Higher advantage = keys stay visible longer
             keyTimeout = setTimeout(() => {
                 if (isWaitingForInput && minigameModal.parentNode) {
                     handleMissedKey();
                 }
-            }, 1000 * difficultyModifier);
+            }, 1000 * (2 - difficultyModifier));
         }
 
         function handleMissedKey() {
@@ -11011,12 +11732,14 @@ function startRaceMinigame(carId, raceId) {
                 if (score >= goal) {
                     endMinigame(true);
                 } else {
-                    setTimeout(showNewKey, 600 - (difficultyModifier * 400));
+                    // Higher advantage = longer time between keys
+                    setTimeout(showNewKey, 600 - ((1.3 - difficultyModifier) * 400));
                 }
             } else {
                 handleMissedKey();
             }
         }
+
         function endMinigame(success = false) {
             clearInterval(timer);
             window.removeEventListener('keydown', onKeyPress);
